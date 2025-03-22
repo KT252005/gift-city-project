@@ -1,7 +1,13 @@
 import ollama 
 from database import Chroma
-    
-    
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app=FastAPI()
+class QueryRequest(BaseModel):
+    query: str
+    store: str 
+
 def ollama_context(query,store):
     retrieved_data=Chroma.query_chroma(query,store=store)
     
@@ -11,17 +17,25 @@ def ollama_context(query,store):
     
     
     context = "\n".join(retrieved_data["documents"][0])if retrieved_data["documents"] else ""
-    prompt = f"Context:\n{context}\n\nUser Query: {query}\nAnswer: should be strictly from context you should not provide and other data just present the context in a personalized way short and crisp "
+    
+    print(context)
+    prompt = f"""
+    
+    Context:\n{context}\n\n
+    User Query: {query}\n\n  
+    Instructions:
+    - Answer **strictly** using the provided context.
+    - **Do not** provide any information that is not found in the context.
+    - **If the context is empty or does not contain relevant information, say:**
+     "I couldn't find relevant information in the provided data."
+    - Keep the answer **concise and to the point**.
+    - Do not assume or infer missing details outside the given context.
+    \nAnswer:"""
     
     response= ollama.chat(model="llama3.2:1b",messages=[{"role": "user", "content": prompt}])
     return response["message"]["content"]
 
-if __name__ == "__main__":
-    
-    for i in range(1000):   
-     update_database=str(input("1 for not updateing and 0 for updating : ")) 
-       
-     
-     user_query = input("user : ")
-     response = ollama_context(user_query,update_database)
-     print("Ollama RAG Response:", response)
+@app.post("/query/")
+async def query_ollama(request:QueryRequest):
+    response_text =ollama_context(request.query,request.store)
+    return {"response": response_text}

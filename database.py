@@ -107,7 +107,7 @@ class Chroma:
 
             results = Chroma.collection.query(
                 query_embeddings=[query_embedding],
-                n_results=2  # Number of results to return
+                n_results=5  # Number of results to return
             )
             return results
 
